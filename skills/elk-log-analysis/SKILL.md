@@ -1,11 +1,11 @@
 ---
 name: elk-log-analysis
-description: Analyze ELK (Elasticsearch/Kibana) logs using the ELK MCP server, correlating events by traceId or sessionId and producing a detailed root cause analysis (RCA) summary covering errors, downstream issues, timeouts, network/database latencies, code issues, and system errors with recommended solutions. Use when investigating errors, tracing requests across services, or debugging production issues in Kibana.
+description: Analyze ELK (Elasticsearch/Kibana) logs using the ELK MCP server or Elasticsearch REST API, correlating events by traceId, sessionId, or request/correlation ID and producing a detailed root cause analysis (RCA) summary covering errors, downstream issues, timeouts, network/database latencies, code issues, system errors, recurrence patterns, and recommended solutions. Use when investigating errors, tracing requests across services, or debugging production issues in Kibana.
 ---
 
 # ELK Log Analysis Skill
 
-Analyze logs stored in Elasticsearch via the **ELK MCP server** by correlating events on `traceId` or `sessionId`.
+Analyze logs stored in Elasticsearch via the **ELK MCP server** (or the Elasticsearch REST API as a fallback) by correlating events on `traceId`, `sessionId`, or request/correlation IDs.
 
 ## Prerequisites
 
@@ -81,6 +81,7 @@ Notes for the REST path:
 |--------------|-----------------------------------------------------|
 | Trace ID     | `traceId`, `trace_id`, `@trace.id`, `transaction.id` |
 | Session ID   | `sessionId`, `session_id`, `@session.id`            |
+| Request/Correlation ID | `requestId`, `correlationId`, `correlation_id`, `x-request-id`, `spanId`, `span_id` |
 | Timestamp    | `@timestamp`                                        |
 | Level        | `level`, `log.level`, `severity`                    |
 | Message      | `message`, `msg`, `log`                             |
@@ -90,10 +91,11 @@ Notes for the REST path:
 
 ### 1. Resolve the identifier type
 
-Ask the user (or infer) whether the ID is a **traceId** (distributed tracing, per-request) or **sessionId** (user session, multi-request).
+Ask the user (or infer) whether the ID is a **traceId** (distributed tracing, per-request), **sessionId** (user session, multi-request), or a **request/correlation ID** (`requestId`, `correlationId`, `spanId` — single-request identifiers used when tracing isn't instrumented).
 
 - `traceId` → typically one request across services; short time window.
 - `sessionId` → a user session; may span minutes/hours and many requests.
+- `requestId`/`correlationId`/`spanId` → single request or single span; narrowest scope. If only a `spanId` is available, search it first, then expand to the parent `traceId` if present in the same document.
 
 ### 2. Discover the correct field name
 
@@ -197,6 +199,27 @@ Provide actionable fixes ordered by priority:
 
 Where the logs suggest a specific config key, dependency, or code location (file/line from stack traces), cite it explicitly.
 
+## Evidence Rules
+
+Every claim in the RCA summary must be backed by evidence from the logs. Follow these rules:
+
+- **Cite every finding** with at least: timestamp, service name, and the relevant log message or field value. Example: `payment-service @ 02:15:47 — "HikariPool-1 - Connection is not available"`.
+- **Quote, don't paraphrase, errors** — include the exception class and message verbatim; trim stack traces to the frames relevant to the failure.
+- **Distinguish observed vs inferred** — label conclusions as *observed* (directly in logs) or *inferred* (deduced from patterns). Never present inference as fact.
+- **No evidence, no claim** — if a category has no supporting log entries, do not list it. If evidence is partial, lower the confidence level and state what is missing.
+- **Correlate before concluding** — a single ERROR line is not a root cause; verify it is the earliest failure in the causal chain and not itself a symptom of an upstream issue.
+- **Respect data gaps** — if the relevant logs are in a different index, retention window, or system (metrics, APM traces), say so explicitly rather than guessing.
+
+## Recurrence Analysis
+
+Required for **Deep dive** mode; recommended for Standard mode when the error looks systemic. Determine whether the issue is a one-off or a recurring pattern:
+
+1. **Extract the error signature** — normalize the error into a stable signature: exception class + message pattern + failing service (strip IDs, timestamps, and variable values). E.g. `HikariPool-1 - Connection is not available` in `payment-service`.
+2. **Count occurrences** — run a `terms` aggregation on the signature components (service + level + a keyword on the normalized message if available) over an extended window (e.g. 7–30 days) to get occurrence counts per day.
+3. **Check other identifiers** — search for the same signature under *different* traceIds/sessionIds to measure blast radius beyond the reported incident.
+4. **Compare to baseline** — aggregate the same signature over a preceding baseline period (e.g. prior week) to compute whether the rate is elevated, new, or chronic.
+5. **Report findings** in the RCA summary under a **Recurrence** subsection: first seen, last seen, total occurrences, affected services, trend (new / recurring / resolved / chronic), and whether prior incidents share the same signature.
+
 ## Modes
 
 The skill supports three analysis modes. Infer the mode from the user's request, or ask if ambiguous.
@@ -205,7 +228,7 @@ The skill supports three analysis modes. Infer the mode from the user's request,
 |------|---------|----------|
 | **Quick triage** | "what failed", "quick look", "is it still happening" | Steps 1–5 only. Return error summary + timeline, no full RCA. Fast, small `size`. |
 | **Standard analysis** | "analyze", "investigate", "why did X fail" | Steps 1–7. Full RCA summary with classification and recommendations. |
-| **Deep dive** | "deep dive", "full RCA", "postmortem" | Standard + wider time window, cross-reference related traceIds/sessionIds found in the data, check for recurrence patterns (same error across other IDs), and compare against baseline error rates. |
+| **Deep dive** | "deep dive", "full RCA", "postmortem" | Standard + wider time window, cross-reference related traceIds/sessionIds found in the data, run Recurrence Analysis, and compare against baseline error rates. |
 
 ## Sample Commands
 
@@ -271,6 +294,14 @@ Checkout API requests started failing at **2026-11-24 02:14 UTC** with 504 Gatew
 - **Affected**: `/checkout` endpoint, all users; ~340 failed requests, 47 min duration.
 - **Latency**: p99 on `/checkout` spiked from 180ms to 30s (timeout ceiling).
 - **Status**: Mitigated, **not resolved** — slow query still in code; will recur under load.
+
+#### Recurrence
+
+- **Signature**: `HikariPool-1 - Connection is not available` in `payment-service`
+- **First seen**: 2026-11-24 02:15:47 UTC · **Last seen**: 2026-11-24 03:01:19 UTC
+- **Occurrences**: 1,204 log lines across ~340 traces in the incident window; 0 in the prior 7 days
+- **Trend**: **New** — no prior occurrences of this signature; correlated with deploy `v2.14.3` at 02:10 UTC
+- **Prior incidents**: none with the same signature
 
 #### Recommended Solutions
 
