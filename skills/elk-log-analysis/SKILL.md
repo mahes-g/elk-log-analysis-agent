@@ -13,6 +13,20 @@ Analyze logs stored in Elasticsearch via the **ELK MCP server** by correlating e
 - Index pattern known (e.g. `logs-*`, `applogs-*`).
 - Field names for trace/session IDs (defaults below; adjust to your mapping).
 
+## MCP Requirements
+
+This skill expects an MCP server that provides Elasticsearch access.
+
+Typical operations used by this skill:
+
+- Discover mappings
+- Discover fields
+- Search documents
+- Aggregate results
+- List indices
+
+The exact MCP tool names depend on the implementation.
+
 ## Default Field Names
 
 | Purpose      | Field candidates (check your mapping)              |
