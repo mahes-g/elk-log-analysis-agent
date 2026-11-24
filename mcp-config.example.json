@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "elk": {
+      "command": "npx",
+      "args": ["-y", "@elastic/mcp-server-elasticsearch"],
+      "env": {
+        "ES_URL": "https://your-elasticsearch-host:9200",
+        "ES_API_KEY": "your-api-key"
+      }
+    }
+  }
+}
