@@ -26,7 +26,7 @@ elk-log-analysis-skill/
 ## Prerequisites
 
 - An MCP-compatible agent/IDE (e.g. Claude Desktop, Windsurf, Cursor).
-- The [Elastic MCP server for Elasticsearch](https://www.elastic.co/docs/explore-analyze/ai-features/mcp-server) (or equivalent ELK MCP) configured and reachable.
+- An MCP server providing Elasticsearch access — either a standalone Elasticsearch MCP server (see [Connect Agents to Elasticsearch with Model Context Protocol](https://www.elastic.co/search-labs/blog/model-context-protocol-elasticsearch)) or [Elastic Agent Builder MCP tools](https://www.elastic.co/docs/explore-analyze/ai-features/agent-builder/tools/mcp-tools) via an [MCP connector](https://www.elastic.co/docs/reference/kibana/connectors-kibana/mcp-action-type).
 - Knowledge of your index pattern (e.g. `logs-*`) and the field names used for trace/session IDs.
 
 ## Setup
@@ -83,12 +83,18 @@ The skill encodes best practices that generic MCP usage often misses:
 - **Field discovery** — prevents silent zero-hit queries from wrong field names.
 - **Bounded queries** — `range` on `@timestamp` avoids timeouts on large indices.
 - **Safe pagination** — `search_after` instead of deep `from` paging.
-- **Structured output** — timeline, call path, errors, root cause.
+- **Structured RCA output** — timeline, failure classification, causal chain, impact, and prioritized recommendations.
 
 ## Customization
 
 - Edit `SKILL.md` to match your index patterns, field names, and severity conventions.
 - Add organization-specific runbooks (e.g. known noisy services to exclude).
+
+## References
+
+- [Connect Agents to Elasticsearch with Model Context Protocol](https://www.elastic.co/search-labs/blog/model-context-protocol-elasticsearch) — Elastic's guide to MCP architecture and the Elasticsearch MCP server.
+- [MCP tools in Elastic Agent Builder](https://www.elastic.co/docs/explore-analyze/ai-features/agent-builder/tools/mcp-tools) — how MCP tool calls are routed through Agent Builder, including tool health monitoring.
+- [MCP connector (Kibana)](https://www.elastic.co/docs/reference/kibana/connectors-kibana/mcp-action-type) — connector setup for exposing MCP tools to Agent Builder.
 
 ## License
 

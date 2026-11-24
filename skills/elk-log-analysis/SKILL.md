@@ -27,6 +27,19 @@ Typical operations used by this skill:
 
 The exact MCP tool names depend on the implementation.
 
+### Supported MCP implementations
+
+This skill works with any MCP server exposing Elasticsearch search capabilities. Two common setups:
+
+- **Standalone Elasticsearch MCP server** — e.g. the reference server described in [Connect Agents to Elasticsearch with Model Context Protocol](https://www.elastic.co/search-labs/blog/model-context-protocol-elasticsearch). Configure it in your agent's MCP settings (see `mcp-config.example.json`).
+- **Elastic Agent Builder MCP tools** — if you run [Elastic Agent Builder](https://www.elastic.co/docs/explore-analyze/ai-features/agent-builder), you can expose Elasticsearch operations as MCP tools via an [MCP connector](https://www.elastic.co/docs/reference/kibana/connectors-kibana/mcp-action-type). See [MCP tools in Elastic Agent Builder](https://www.elastic.co/docs/explore-analyze/ai-features/agent-builder/tools/mcp-tools) for how tool calls are routed: Agent Builder fetches the tool's input schema, calls the MCP server, and returns the raw result to the LLM. Tools can be imported individually or in bulk, and unhealthy tools (connector down, tool removed, execution failure) are flagged in the Agent Builder UI — check tool health first if queries unexpectedly fail.
+
+### MCP behavior notes
+
+- The MCP server returns results **directly to the LLM with no post-processing** — the skill's query design (field names, time bounds, pagination) is what guarantees quality.
+- Prefer resolving field names via mapping/field-capabilities calls **before** searching, matching the "lookup index mapping first, then construct the query" pattern recommended in Elastic's MCP guidance.
+- If using Agent Builder, verify the MCP connector is healthy before starting analysis; an unavailable connector produces tool-call failures, not empty results.
+
 ## Default Field Names
 
 | Purpose      | Field candidates (check your mapping)              |
