@@ -20,9 +20,7 @@ elk-log-analysis-skill/
 │   └── elk-log-analysis/
 │       └── SKILL.md              # The skill definition (agent instructions)
 ├── mcp-config.example.json       # Example ELK MCP server configuration
-├── README.md                     # This file
-└── articles/
-    └── medium-article.md         # Medium article draft
+└── README.md                     # This file
 ```
 
 ## Prerequisites
