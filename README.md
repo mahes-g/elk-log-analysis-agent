@@ -26,7 +26,7 @@ elk-log-analysis-skill/
 ## Prerequisites
 
 - An MCP-compatible agent/IDE (e.g. Claude Desktop, Windsurf, Cursor).
-- An MCP server providing Elasticsearch access — either a standalone Elasticsearch MCP server (see [Connect Agents to Elasticsearch with Model Context Protocol](https://www.elastic.co/search-labs/blog/model-context-protocol-elasticsearch)) or [Elastic Agent Builder MCP tools](https://www.elastic.co/docs/explore-analyze/ai-features/agent-builder/tools/mcp-tools) via an [MCP connector](https://www.elastic.co/docs/reference/kibana/connectors-kibana/mcp-action-type).
+- An MCP server providing Elasticsearch access — either a standalone Elasticsearch MCP server (see [Connect Agents to Elasticsearch with Model Context Protocol](https://www.elastic.co/search-labs/blog/model-context-protocol-elasticsearch)) or [Elastic Agent Builder MCP tools](https://www.elastic.co/docs/explore-analyze/ai-features/agent-builder/tools/mcp-tools) via an [MCP connector](https://www.elastic.co/docs/reference/kibana/connectors-kibana/mcp-action-type). **No MCP?** The skill also works via the direct Elasticsearch REST API (or Kibana Dev Tools Console) — see the fallback section in `SKILL.md`.
 - Knowledge of your index pattern (e.g. `logs-*`) and the field names used for trace/session IDs.
 
 ## Setup
@@ -77,7 +77,7 @@ Once installed, ask your agent things like:
 
 ## How It Works
 
-The skill encodes best practices that generic MCP usage often misses:
+The skill encodes best practices that generic MCP/API usage often misses — and works over MCP or the plain Elasticsearch REST API:
 
 - **Identifier disambiguation** — trace vs session implies different time windows and analysis depth.
 - **Field discovery** — prevents silent zero-hit queries from wrong field names.

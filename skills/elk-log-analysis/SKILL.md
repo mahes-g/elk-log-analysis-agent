@@ -40,6 +40,41 @@ This skill works with any MCP server exposing Elasticsearch search capabilities.
 - Prefer resolving field names via mapping/field-capabilities calls **before** searching, matching the "lookup index mapping first, then construct the query" pattern recommended in Elastic's MCP guidance.
 - If using Agent Builder, verify the MCP connector is healthy before starting analysis; an unavailable connector produces tool-call failures, not empty results.
 
+### Fallback: direct Elasticsearch REST API
+
+If no MCP server is available but you have access to the Elasticsearch REST API (HTTP endpoint + credentials/API key), perform the same operations directly. All MCP operations used by this skill map to REST equivalents:
+
+| MCP operation | REST API equivalent |
+|---------------|---------------------|
+| List indices | `GET /_cat/indices/<pattern>?format=json` or `GET /_resolve/index/<pattern>` |
+| Discover mappings | `GET /<index-pattern>/_mapping` or `GET /<index-pattern>/_mapping/field/<field>` |
+| Discover fields | `GET /<index-pattern>/_field_caps?fields=*` |
+| Search documents | `POST /<index-pattern>/_search` (same query DSL as the MCP path) |
+| Aggregate results | `POST /<index-pattern>/_search` with an `aggs` block |
+
+Example trace lookup via REST:
+
+```bash
+curl -s -X POST "https://<es-host>:9200/logs-*/_search" \
+  -H "Authorization: ApiKey <api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": {"bool": {"must": [
+      {"term": {"traceId": "<TRACE_ID>"}},
+      {"range": {"@timestamp": {"gte": "now-24h"}}}
+    ]}},
+    "sort": [{"@timestamp": "asc"}],
+    "size": 200
+  }'
+```
+
+Notes for the REST path:
+
+- Use `POST` for `_search` (avoids URL-length issues with large queries).
+- Auth: `Authorization: ApiKey <key>` header, or Basic auth. Never embed credentials in committed files.
+- If only Kibana is reachable (no direct ES access), use Kibana's **Dev Tools Console** — it proxies the same REST API and is the closest equivalent.
+- The query DSL, field discovery, pagination (`search_after`), and RCA workflow in this skill are identical regardless of transport — only the invocation mechanism changes.
+
 ## Default Field Names
 
 | Purpose      | Field candidates (check your mapping)              |
